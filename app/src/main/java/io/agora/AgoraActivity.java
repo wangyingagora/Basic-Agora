@@ -6,8 +6,14 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import io.agora.rtc.Constants;
 import io.agora.rtc.IRtcEngineEventHandler;
@@ -16,7 +22,10 @@ import io.agora.rtc.mediaio.AgoraTextureCamera;
 import io.agora.rtc.mediaio.AgoraTextureView;
 import io.agora.rtc.mediaio.IVideoSink;
 
+import static io.agora.rtc.mediaio.MediaIO.BufferType.BYTE_ARRAY;
+import static io.agora.rtc.mediaio.MediaIO.BufferType.BYTE_BUFFER;
 import static io.agora.rtc.mediaio.MediaIO.BufferType.TEXTURE;
+import static io.agora.rtc.mediaio.MediaIO.PixelFormat.I420;
 import static io.agora.rtc.mediaio.MediaIO.PixelFormat.TEXTURE_OES;
 
 
@@ -31,6 +40,7 @@ public class AgoraActivity extends AppCompatActivity {
     private IRtcEngineEventHandler mRtcEventHandler;
     private AgoraTextureCamera mVideoSource;
     private IVideoSink mLocalVideoRender;
+    private Map<Integer, Boolean> mUsers = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,10 +121,13 @@ public class AgoraActivity extends AppCompatActivity {
             mRtcEventHandler = new IRtcEngineEventHandler() {
                 @Override
                 public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
+                    Log.e(TAG, "onJoinChannelSuccess");
                 }
 
                 @Override
                 public void onFirstRemoteVideoDecoded(int uid, int width, int height, int elapsed) {
+                    Log.e(TAG, "onFirstRemoteVideoDecoded");
+                    addRemoteRender(uid, width, height);
                 }
 
                 @Override
@@ -151,7 +164,7 @@ public class AgoraActivity extends AppCompatActivity {
 
             mRtcEngine.startPreview();
 
-            mRtcEngine.joinChannel(null, "arcore", "ARCore with RtcEngine", 0);
+            mRtcEngine.joinChannel(null, "hq", "hq with RtcEngine", 0);
 
         } catch (Exception ex) {
            // printLog(ex.toString());
@@ -168,6 +181,17 @@ public class AgoraActivity extends AppCompatActivity {
         ((AgoraTextureView)mLocalVideoRender).setBufferType(TEXTURE);
         ((AgoraTextureView)mLocalVideoRender).setPixelFormat(TEXTURE_OES);
 
+    }
+
+    private void addRemoteRender(int uid, int width, int height) {
+        if (mUsers.containsKey(uid)) return;
+
+        mUsers.put(uid, true);
+        AgoraTextureView render = (AgoraTextureView)findViewById(R.id.remote_textureview);
+        render.init(null);
+        render.setBufferType(BYTE_BUFFER);
+        render.setPixelFormat(I420);
+        mRtcEngine.setRemoteVideoRenderer(uid, render);
     }
 
     private static final int BASE_VALUE_PERMISSION = 0X0001;
